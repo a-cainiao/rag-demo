@@ -45,7 +45,9 @@ class RetrievedChunk(BaseModel):
     document_id: str = Field(description="分片所属文档的唯一 ID")
     filename: str = Field(description="分片所属的原始文件名")
     content: str = Field(description="用于召回或回答的完整文本段落")
-    score: float = Field(description="向量相似度分数，越高代表相关性越高")
+    score: float = Field(
+        description="归一化余弦相关性分数（0 到 1）；越接近 1 代表语义越相关"
+    )
 
 
 class RetrievalResponse(BaseModel):

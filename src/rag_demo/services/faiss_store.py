@@ -42,12 +42,21 @@ class FaissVectorStore:
     def similarity_search_with_relevance_scores(
         self, query: str, k: int
     ) -> list[tuple[Document, float]]:
-        """Search the saved index; no index means no knowledge-base context."""
+        """Search using a 0-1, normalized cosine-relevance score.
+
+        FAISS's ``IndexFlatL2`` returns *squared* L2 distance. Since this adapter
+        L2-normalizes all vectors, ``cosine_similarity = 1 - squared_distance / 2``.
+        Mapping cosine's [-1, 1] range to [0, 1] yields ``1 - squared_distance / 4``.
+        """
 
         with self._lock:
             if self._store is None:
                 return []
-            return self._store.similarity_search_with_relevance_scores(query, k=k)
+            matches = self._store.similarity_search_with_score(query, k=k)
+            return [
+                (document, max(0.0, min(1.0, 1.0 - float(squared_distance) / 4.0)))
+                for document, squared_distance in matches
+            ]
 
     def find_documents_by_document_id(self, document_id: str) -> list[tuple[str, Document]]:
         """Find all FAISS chunk IDs belonging to a document via its stored metadata."""

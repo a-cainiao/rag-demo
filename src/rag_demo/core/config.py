@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=150, ge=0)
     default_top_k: int = Field(default=4, ge=1)
     max_top_k: int = Field(default=10, ge=1)
-    relevance_score_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    relevance_score_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     max_upload_size_bytes: int = Field(default=5 * 1024 * 1024, ge=1)
 
     @model_validator(mode="after")
