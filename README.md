@@ -72,4 +72,3 @@ uv run pytest
 ```powershell
 pip install -r requirements.txt
 ```
-## 测试提交推送
