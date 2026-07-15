@@ -24,7 +24,7 @@ from rag_demo.services.faiss_store import FaissVectorStore
 
 SUPPORTED_EXTENSIONS = {".txt", ".md"}
 NO_CONTEXT_ANSWER = "无法依据当前知识库回答。"
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 class RagService:
@@ -134,8 +134,25 @@ class RagService:
     def answer(self, question: str, top_k: int | None = None) -> tuple[str, list[RetrievedChunk]]:
         """Generate a grounded answer and return the exact chunks used as context."""
 
+        cleaned_question = self._validate_question(question)
+        logger.info(
+            "[rag_demo.services.rag_service] Starting answer generation: "
+            "question_length=%s top_k=%s",
+            len(cleaned_question),
+            top_k,
+        )
         sources = self.retrieve(question, top_k)
+        logger.info(
+            "[rag_demo.services.rag_service] Answer retrieval completed: "
+            "retrieval_count=%s source_chunk_ids=%s",
+            len(sources),
+            [source.chunk_id for source in sources],
+        )
         if not sources:
+            logger.info(
+                "[rag_demo.services.rag_service] Skipping answer model call because no relevant "
+                "context was retrieved"
+            )
             return NO_CONTEXT_ANSWER, []
 
         context = "\n\n".join(
@@ -147,7 +164,13 @@ class RagService:
             "若上下文无法支持答案，必须回答“无法依据当前知识库回答”。"
             "不要使用外部知识，不要臆测。回答末尾请以 [来源: chunk_id] 标注依据。\n\n"
             f"知识库上下文：\n{context}\n\n"
-            f"问题：{self._validate_question(question)}"
+            f"问题：{cleaned_question}"
+        )
+        logger.info(
+            "[rag_demo.services.rag_service] Invoking answer model: context_length=%s "
+            "prompt_length=%s",
+            len(context),
+            len(prompt),
         )
         try:
             response = self._get_chat_model().invoke(prompt)
@@ -165,6 +188,10 @@ class RagService:
         answer = str(content).strip()
         if not answer:
             raise UpstreamServiceError("answer model returned an empty response")
+        logger.info(
+            "[rag_demo.services.rag_service] Answer generation completed: answer_length=%s",
+            len(answer),
+        )
         return answer, sources
 
     def delete_document(self, document_id: str) -> int:

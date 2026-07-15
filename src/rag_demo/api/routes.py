@@ -1,5 +1,6 @@
 """HTTP endpoints for document lifecycle and grounded Q&A."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, File, Request, UploadFile, status
@@ -17,6 +18,7 @@ from rag_demo.schemas.rag import (
 from rag_demo.services.rag_service import RagService
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 
 def get_rag_service(request: Request) -> RagService:
@@ -81,7 +83,20 @@ def retrieve(request: Request, payload: QuestionRequest) -> RetrievalResponse:
     ),
 )
 def answer(request: Request, payload: QuestionRequest) -> AnswerResponse:
+    logger.info(
+        "[rag_demo.api.routes] Answer request received: question_length=%s top_k=%s client=%s",
+        len(payload.question.strip()),
+        payload.top_k,
+        request.client.host if request.client else "unknown",
+    )
     response, sources = get_rag_service(request).answer(payload.question, payload.top_k)
+    logger.info(
+        "[rag_demo.api.routes] Answer request completed: retrieval_count=%s "
+        "answer_length=%s source_chunk_ids=%s",
+        len(sources),
+        len(response),
+        [source.chunk_id for source in sources],
+    )
     return AnswerResponse(answer=response, sources=sources, retrieval_count=len(sources))
 
 
